@@ -55,9 +55,10 @@ def generate_icons(master_png_path, dest_dir="src-tauri/icons", public_dir="publ
     master_512.save(os.path.join(dest_dir, "icon.png"), "PNG")
     master_512.save(os.path.join(public_dir, "icon.png"), "PNG")
 
-    # 2. Key PNG sizes for Tauri
+    # 2. Key PNG sizes for Tauri & Windows Store / Tiles
     sizes_map = {
         "32x32.png": (32, 32),
+        "64x64.png": (64, 64),
         "128x128.png": (128, 128),
         "128x128@2x.png": (256, 256),
         "Square30x30Logo.png": (30, 30),
@@ -75,17 +76,25 @@ def generate_icons(master_png_path, dest_dir="src-tauri/icons", public_dir="publ
     for filename, (w, h) in sizes_map.items():
         resized = master.resize((w, h), Image.Resampling.LANCZOS)
         if w <= 48:
-            resized = resized.filter(ImageFilter.UnsharpMask(radius=0.8, percent=130, threshold=2))
+            resized = resized.filter(ImageFilter.UnsharpMask(radius=0.7, percent=140, threshold=2))
         resized.save(os.path.join(dest_dir, filename), "PNG")
         print(f"Generated: {filename} ({w}x{h})")
 
-    # 3. Multi-resolution Windows .ICO file (Win32 compliant BMP + 256px PNG)
-    ico_sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+    # Save additional frontend public assets
+    master_512.save(os.path.join(public_dir, "logo.png"), "PNG")
+    master_512.save(os.path.join(assets_dir, "eiryn_icon.png"), "PNG")
+
+    # 3. High-DPI Comprehensive Windows .ICO file (100%, 125%, 150%, 200% DPI scales)
+    # Includes 16, 20, 24, 30, 32, 40, 48, 64, 96, 128, 256 to ensure ZERO scaling blur on any display
+    ico_sizes = [
+        (16, 16), (20, 20), (24, 24), (30, 30), (32, 32),
+        (40, 40), (48, 48), (64, 64), (96, 96), (128, 128), (256, 256)
+    ]
     ico_images = []
     for s in ico_sizes:
         img_s = master.resize(s, Image.Resampling.LANCZOS)
         if s[0] <= 48:
-            img_s = img_s.filter(ImageFilter.UnsharpMask(radius=0.8, percent=130, threshold=2))
+            img_s = img_s.filter(ImageFilter.UnsharpMask(radius=0.7, percent=140, threshold=2))
         ico_images.append(img_s)
 
     ico_path = os.path.join(dest_dir, "icon.ico")
