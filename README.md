@@ -1,6 +1,8 @@
-# Eiryn
-
 <div align="center">
+
+<img src="public/logo.png" alt="Eiryn Logo" width="128" height="128" />
+
+# Eiryn
 
 **A modern, audiophile-grade offline music player built with Tauri v2, Vue 3, and Rust.**
 
@@ -17,7 +19,17 @@
 
 ## Overview
 
-**Eiryn** is an offline music player designed for audiophiles, collectors, and music enthusiasts. Combining a high-performance **Rust** audio pipeline with a modern, glass-styled **Vue 3** interface, Eiryn delivers bit-perfect playback, advanced digital signal processing (DSP), real-time audio forensics, and instant library navigation across collections of 50,000+ tracks.
+**Eiryn** is an offline desktop music player engineered for audiophiles, collectors, and music purists. Combining an ultra-low-latency **Rust** digital signal processing pipeline with a fluid, glass-styled **Vue 3** interface, Eiryn delivers bit-perfect stream transport, active inter-sample clip prevention, real-time library forensics, and instantaneous navigation across libraries exceeding 50,000+ tracks.
+
+---
+
+## 🎨 Tactile Industrial Design Philosophy
+
+Eiryn's brand and visual identity are rooted in the timeless functionalism of **Dieter Rams (Braun)** and **Teenage Engineering**, rejecting AI airbrushing and neon clutter in favor of **authentic, tactile audio hardware**:
+
+- **Physical Material Honesty**: Modeled after a precision CNC-machined bead-blasted aluminum potentiometer with an 84-tooth knurled tactile grip, circular lathe-turned anisotropic grain, and a signature recessed safety-orange indicator slot.
+- **Acoustic Port Matrix**: Concentric rings of micro-drilled acoustic speaker pinholes set into a matte dark basalt unibody chassis.
+- **Zero-Blur Multi-Resolution Scaling**: Encodes **11 native resolutions** ($16\times 16$ through $256\times 256$) inside a single `.ico` file, ensuring pixel-perfect 1:1 display mapping across all Windows scaling modes ($100\%$, $125\%$, $150\%$, and $200\%$) with zero taskbar or system tray blur.
 
 ---
 
@@ -25,10 +37,10 @@
 
 ### 🎧 Audiophile-Grade Audio Pipeline
 
-- **Bit-Perfect WASAPI Exclusive Mode**: Direct, unadulterated hardware stream bypassing the Windows audio mixer, with seamless fallback to low-latency Shared Mode.
+- **Bit-Perfect WASAPI Exclusive Mode**: Direct hardware stream bypassing Windows audio processing (APOs) and system mixing, with seamless automatic fallback to low-latency Shared Mode.
 - **Lookahead Peak Limiter**: Transparent -0.1 dBFS ceiling with a 16-sample lookahead buffer and 80ms release curve, eliminating inter-sample clipping and digital distortion during aggressive EQ boosts or positive ReplayGain.
-- **Hardware DAC Pop Suppressor**: 20ms linear volume ramp-in upon stream initialization to prevent electrical popping on external USB DACs.
-- **Ear Protection & Safe Volume**: Initial volume is capped to $\le 30\%$ when switching to an uncalibrated audio output device; playback automatically pauses if the active audio endpoint is disconnected.
+- **Hardware DAC Pop Suppressor**: 20ms linear volume ramp-in upon stream initialization to suppress electrical popping on external USB DACs.
+- **Ear Protection & Safe Volume**: Initial volume is capped to $\le 30\%$ when switching to an uncalibrated audio output device; playback automatically pauses if the active audio endpoint is unplugged.
 - **EBU R128 & ReplayGain 2.0**: Integrated LUFS loudness normalization with smart clip-guard headroom.
 - **Headphone Crossfeed**: Spatial acoustic simulation using **Meier** and **Chu Moy** algorithms to reduce listening fatigue on headphones.
 - **Karaoke Center-Vocal Remover**: Real-time center-channel differential phase cancellation ($L - R$) paired with a 2nd-order Butterworth sub-bass retention filter ($< 150\text{ Hz}$).
