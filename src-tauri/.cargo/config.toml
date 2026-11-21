@@ -1,0 +1,31 @@
+[target.x86_64-pc-windows-msvc]
+# Optimize for a portable x86-64 baseline (SSE4.2/POPCNT) so the binary runs
+# on any modern x64 CPU, not just the build host.
+rustflags = [
+    "-C", "target-cpu=x86-64-v2",
+    "-C", "link-arg=/OPT:REF",
+    "-C", "link-arg=/OPT:ICF",
+]
+
+[target.x86_64-pc-windows-gnu]
+rustflags = [
+    "-C", "target-cpu=x86-64-v2",
+    "-C", "link-arg=-Wl,--gc-sections",
+]
+
+[profile.release]
+# Maximum optimization level
+opt-level = 3
+# Enable LTO
+lto = true
+# Strip symbols
+strip = true
+# Panic abort for smaller binaries
+panic = "abort"
+# Codegen units for better optimization
+codegen-units = 1
+
+[profile.release-with-debug]
+inherits = "release"
+strip = false
+debug = true

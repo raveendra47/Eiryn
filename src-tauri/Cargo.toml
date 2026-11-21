@@ -1,0 +1,104 @@
+[package]
+name = "eiryn-player"
+version = "0.1.0"
+description = "Eiryn - Tauri v2 + Rust"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "eiryn_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["devtools", "tray-icon"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-autostart = { version = "2", features = [] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-store = "2"
+tauri-plugin-window-state = "2"
+tauri-plugin-single-instance = "2"
+souvlaki = "0.9.3"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+lofty = "0.22"
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite"] }
+uuid = { version = "1", features = ["v4"] }
+chrono = "0.4"
+base64 = "0.22"
+md-5 = "0.10"
+log = "0.4"
+env_logger = "0.11"
+walkdir = "2"
+reqwest = { version = "0.12", features = ["json", "blocking"] }
+tiny_http = "0.12"
+sha2 = "0.10"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+
+# Performance optimizations
+symphonia = { version = "0.6.1", features = ["all", "opt-simd"] }
+cpal = "0.18.2"
+ringbuf = "0.6.0"
+rubato = "5.0.1"
+audioadapter-buffers = "5"
+rand = "0.8"
+rayon = "1.10"
+realfft = "3"
+num-complex = "0.4"
+futures = "0.3"
+anyhow = "1.0"
+
+# Full-text search (Phase 2)
+tantivy = "0.22"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+# Windows-specific APIs (Phase 3 - GPU & Native Integration)
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.58"
+features = [
+    # Core Foundation
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Com",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Threading",
+    "Win32_System_Variant",
+    "Win32_System_Ole",
+    
+    # Shell Integration (Taskbar, Jump Lists)
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+    
+    # Direct2D/DirectWrite for GPU-accelerated rendering
+    "Win32_Graphics_Direct2D",
+    "Win32_Graphics_Direct2D_Common",
+    "Win32_Graphics_DirectWrite",
+    "Win32_Graphics_Imaging",
+    
+    # Power management
+    "Win32_System_Power",
+    
+    # File system watcher
+    "Win32_Storage_FileSystem",
+    "Win32_System_IO",
+    
+    # Taskbar / Shell
+    "Win32_UI_Shell_PropertiesSystem",
+    "Win32_UI_HiDpi",
+]
+
+# GPU compute for image processing (Intel Iris Xe)
+[target.'cfg(windows)'.dependencies]
+wasapi = "0.26.0"
+wgpu = "22"
+
+[profile.dev]
+debug = 1
+
+[package.metadata]
