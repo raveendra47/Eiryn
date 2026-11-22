@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <clipPath id="c1_squircle">
+      <rect x="64" y="64" width="896" height="896" rx="224" ry="224" />
+    </clipPath>
+  </defs>
+
+  <!-- Squircle Canvas: Deep Midnight Obsidian -->
+  <rect x="64" y="64" width="896" height="896" rx="224" ry="224" fill="#0B111E" />
+
+  <g clip-path="url(#c1_squircle)">
+    <!-- Broad Torso / Shoulder Silhouette Base -->
+    <path d="M 100 960 C 160 800, 310 725, 480 715 C 650 705, 800 780, 924 960 Z" fill="#FFFFFF" />
+
+    <!-- Head and Neck Profile (Facing Right, Tilted in Blissful Listening) -->
+    <path d="M 430 715 
+             C 410 600, 440 490, 480 420 
+             C 520 350, 580 320, 640 330 
+             C 675 335, 705 355, 720 385 
+             C 735 415, 750 425, 775 435 
+             C 785 440, 788 452, 780 462 
+             C 770 474, 750 478, 742 488 
+             C 755 500, 755 514, 742 528 
+             C 730 542, 705 550, 675 555 
+             C 635 565, 595 595, 570 650 
+             C 555 680, 550 705, 550 715 Z" fill="#FFFFFF" />
+
+    <!-- Soundwave Hair Crests (Radiant Tangerine #FF6B35) -->
+    <!-- Wave 1 (Upper Sine Harmonic) -->
+    <path d="M 625 330 
+             C 540 240, 440 220, 360 270 
+             C 290 315, 230 300, 160 250 
+             C 195 330, 260 375, 345 355 
+             C 430 335, 510 360, 565 405 Z" fill="#FF6B35" />
+
+    <!-- Wave 2 (Mid Sine Harmonic) -->
+    <path d="M 525 390 
+             C 450 330, 350 320, 270 365 
+             C 205 400, 160 390, 100 340 
+             C 130 420, 195 465, 280 445 
+             C 365 425, 440 450, 490 490 Z" fill="#FF6B35" />
+
+    <!-- Wave 3 (Lower Bass Harmonic) -->
+    <path d="M 470 485 
+             C 400 440, 310 440, 240 485 
+             C 190 515, 150 505, 110 470 
+             C 135 540, 195 580, 265 565 
+             C 345 545, 410 565, 455 620 Z" fill="#FF6B35" />
+
+    <!-- Serene Closed Smiling Eye (Deep Midnight Navy) -->
+    <path d="M 645 422 Q 670 448 695 422" fill="none" stroke="#0B111E" stroke-width="16" stroke-linecap="round" />
+
+    <!-- Calm Happy Smile -->
+    <path d="M 685 502 Q 705 516 725 499" fill="none" stroke="#0B111E" stroke-width="12" stroke-linecap="round" />
+
+    <!-- Audiophile Headphone Band (Electric Cyan #00E5FF) -->
+    <path d="M 530 470 C 510 260, 380 180, 280 220" fill="none" stroke="#00E5FF" stroke-width="32" stroke-linecap="round" />
+    
+    <!-- Gimbal Yoke Mount -->
+    <rect x="512" y="420" width="28" height="48" rx="10" fill="#FFFFFF" />
+
+    <!-- Headphone Outer Ear Cup -->
+    <circle cx="524" cy="520" r="96" fill="#00E5FF" />
+    <!-- Inner Cavity -->
+    <circle cx="524" cy="520" r="60" fill="#0B111E" />
+    <!-- Center Sound Core -->
+    <circle cx="524" cy="520" r="28" fill="#FF6B35" />
+
+    <!-- Propagating Sound Wavefronts (Sound leaving the listener) -->
+    <path d="M 790 440 C 825 470, 825 530, 790 560" fill="none" stroke="#00E5FF" stroke-width="18" stroke-linecap="round" />
+    <path d="M 840 405 C 895 450, 895 550, 840 595" fill="none" stroke="#FF6B35" stroke-width="18" stroke-linecap="round" />
+  </g>
+</svg>

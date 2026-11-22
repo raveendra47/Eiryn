@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <clipPath id="squircleClipC3">
+      <rect x="64" y="64" width="896" height="896" rx="224" ry="224" />
+    </clipPath>
+  </defs>
+
+  <!-- Squircle Canvas Background: Deep Space Navy -->
+  <rect x="64" y="64" width="896" height="896" rx="224" ry="224" fill="#080E1B" />
+
+  <g clip-path="url(#squircleClipC3)">
+    <!-- Shoulders & Torso Base -->
+    <path d="M 120 960 
+             C 170 810, 310 730, 480 720 
+             C 630 710, 770 780, 890 960 Z" 
+          fill="#FFFFFF" />
+
+    <!-- Head & Neck Solid Profile (Facing Right) -->
+    <path d="M 430 720 
+             C 410 610, 440 500, 480 430 
+             C 520 360, 580 320, 640 330 
+             C 670 335, 700 355, 715 385 
+             C 730 415, 745 425, 770 435 
+             C 780 440, 785 450, 780 460 
+             C 772 472, 750 478, 740 488 
+             C 752 498, 755 512, 742 528 
+             C 730 542, 705 550, 675 555 
+             C 635 565, 595 595, 570 650 
+             C 555 680, 550 710, 550 720 Z" 
+          fill="#FFFFFF" />
+
+    <!-- Modern Clean Minimalist Hair (Electric Cobalt #3B82F6) -->
+    <path d="M 640 330 
+             C 560 270, 460 270, 380 320 
+             C 300 370, 240 460, 260 550 
+             C 300 500, 360 460, 440 450 
+             C 520 440, 580 390, 640 330 Z" 
+          fill="#3B82F6" />
+
+    <!-- Closed Serene Smiling Eye (Deep Navy #080E1B) -->
+    <path d="M 645 420 Q 670 445 695 420" 
+          fill="none" stroke="#080E1B" stroke-width="16" stroke-linecap="round" />
+
+    <!-- Serene Smile -->
+    <path d="M 685 500 Q 705 515 725 498" 
+          fill="none" stroke="#080E1B" stroke-width="12" stroke-linecap="round" />
+
+    <!-- Headphone Headband (Electric Cobalt #3B82F6) -->
+    <path d="M 520 470 C 500 260, 380 180, 280 230" 
+          fill="none" stroke="#3B82F6" stroke-width="32" stroke-linecap="round" />
+
+    <!-- Headphone Swivel Yoke (Solid White) -->
+    <rect x="502" y="420" width="28" height="48" rx="10" fill="#FFFFFF" />
+
+    <!-- Headphone Outer Earcup (Electric Cobalt #3B82F6) -->
+    <circle cx="516" cy="520" r="96" fill="#3B82F6" />
+
+    <!-- Headphone Inner Cavity (Deep Navy #080E1B) -->
+    <circle cx="516" cy="520" r="60" fill="#080E1B" />
+
+    <!-- Headphone Center Core (Luminous Emerald Mint #00F5A0) -->
+    <circle cx="516" cy="520" r="28" fill="#00F5A0" />
+
+    <!-- HERO CREATIVE ELEMENT: Single Flowing Acoustic Orbit Ribbon (Luminous Mint #00F5A0) -->
+    <!-- The sound wave ribbon leaves the headphone cup, swoops across the chin, arches up and loops in front! -->
+    <path d="M 516 520 
+             C 580 570, 680 620, 770 580 
+             C 860 540, 880 430, 810 350 
+             C 740 270, 610 240, 500 260 
+             C 410 280, 340 330, 300 400" 
+          fill="none" stroke="#00F5A0" stroke-width="26" stroke-linecap="round" />
+
+    <!-- Dynamic Harmonic Particle Discs along the orbit path -->
+    <circle cx="820" cy="370" r="14" fill="#00F5A0" />
+    <circle cx="750" cy="285" r="10" fill="#00F5A0" />
+    <circle cx="650" cy="250" r="7" fill="#00F5A0" />
+  </g>
+</svg>

@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <clipPath id="c3_squircle">
+      <rect x="64" y="64" width="896" height="896" rx="224" ry="224" />
+    </clipPath>
+  </defs>
+
+  <!-- Squircle Canvas: Deep Space Midnight -->
+  <rect x="64" y="64" width="896" height="896" rx="224" ry="224" fill="#080E1B" />
+
+  <g clip-path="url(#c3_squircle)">
+    <!-- Broad Torso / Shoulder Silhouette Base -->
+    <path d="M 100 960 C 160 800, 310 725, 480 715 C 650 705, 800 780, 924 960 Z" fill="#FFFFFF" />
+
+    <!-- Head and Neck Profile (Facing Right, Tilted in Blissful Listening) -->
+    <path d="M 430 715 
+             C 410 600, 440 490, 480 420 
+             C 520 350, 580 320, 640 330 
+             C 675 335, 705 355, 720 385 
+             C 735 415, 750 425, 775 435 
+             C 785 440, 788 452, 780 462 
+             C 770 474, 750 478, 742 488 
+             C 755 500, 755 514, 742 528 
+             C 730 542, 705 550, 675 555 
+             C 635 565, 595 595, 570 650 
+             C 555 680, 550 705, 550 715 Z" fill="#FFFFFF" />
+
+    <!-- Clean Modern Hair Contour (Electric Cobalt #3B82F6) -->
+    <path d="M 640 330 
+             C 560 270, 460 270, 380 320 
+             C 300 370, 240 460, 260 550 
+             C 300 500, 360 460, 440 450 
+             C 520 440, 580 390, 640 330 Z" fill="#3B82F6" />
+
+    <!-- Serene Closed Smiling Eye -->
+    <path d="M 645 422 Q 670 448 695 422" fill="none" stroke="#080E1B" stroke-width="16" stroke-linecap="round" />
+
+    <!-- Calm Happy Smile -->
+    <path d="M 685 502 Q 705 516 725 499" fill="none" stroke="#080E1B" stroke-width="12" stroke-linecap="round" />
+
+    <!-- Headphone Headband (Electric Cobalt #3B82F6) -->
+    <path d="M 520 470 C 500 260, 380 180, 280 230" fill="none" stroke="#3B82F6" stroke-width="32" stroke-linecap="round" />
+    
+    <!-- Gimbal Yoke Mount -->
+    <rect x="502" y="420" width="28" height="48" rx="10" fill="#FFFFFF" />
+
+    <!-- Headphone Outer Ear Cup (Electric Cobalt #3B82F6) -->
+    <circle cx="516" cy="520" r="96" fill="#3B82F6" />
+    <!-- Inner Cavity -->
+    <circle cx="516" cy="520" r="60" fill="#080E1B" />
+    <!-- Center Core (Luminous Emerald Mint #00F5A0) -->
+    <circle cx="516" cy="520" r="28" fill="#00F5A0" />
+
+    <!-- HERO CREATIVE ELEMENT: Continuous Flowing Sound Wave Ribbon Orbit -->
+    <!-- Leaves the headphone cup, wraps across the chin/front, arches over the crown in a sound orbit -->
+    <path d="M 516 520 
+             C 580 570, 680 620, 770 580 
+             C 860 540, 880 430, 810 350 
+             C 740 270, 610 240, 500 260 
+             C 410 280, 340 330, 300 400" 
+          fill="none" stroke="#00F5A0" stroke-width="26" stroke-linecap="round" />
+
+    <!-- Dynamic Harmonic Orbit Discs -->
+    <circle cx="820" cy="370" r="14" fill="#00F5A0" />
+    <circle cx="750" cy="285" r="10" fill="#00F5A0" />
+    <circle cx="650" cy="250" r="7" fill="#00F5A0" />
+  </g>
+</svg>
