@@ -98,6 +98,7 @@ export const usePlayerStore = defineStore('player', () => {
   const crossfeedEnabled = ref(false)
   const crossfeedLevel = ref('default')
   const karaokeEnabled = ref(false)
+  const isExternalPlayback = ref(false)
 
   async function loadKaraoke() {
     try {
@@ -308,16 +309,11 @@ export const usePlayerStore = defineStore('player', () => {
       applyOutputState(await api.getOutputState())
     } catch { }
 
-    // Pull any external file metadata stored during Rust setup
-    try {
-      const pending = await api.consumePendingExternalFile()
-      if (pending) {
-        handleOpenFile(pending as Record<string, unknown>)
-      }
-    } catch { }
 
     // Restore session from disk (survives crashes)
     try {
+      const ext = await api.isExternalPlayback().catch(() => false)
+      isExternalPlayback.value = ext
       const result = await api.restoreSession()
       if (result.session) {
         const s = result.session
@@ -333,7 +329,7 @@ export const usePlayerStore = defineStore('player', () => {
         gapless.value = s.gapless
         crossfade.value = s.crossfade
         restoredPosition.value = s.position
-        if (s.track_id) {
+        if (s.track_id && !isExternalPlayback.value) {
           try {
             const track = await api.getTrack(s.track_id)
             if (track) {
@@ -406,9 +402,15 @@ export const usePlayerStore = defineStore('player', () => {
           syncInterpolation(data.position)
         }
       }),
+      await listen('external-playback-started', () => {
+        isExternalPlayback.value = true
+        currentTrack.value = null
+        isPlaying.value = true
+        syncInterpolation(0)
+      }),
       await listen<string>('track-changed', async (event) => {
         const newId = event.payload
-        if (!newId) return
+        if (!newId || isExternalPlayback.value) return
         if (isMainWindow) {
           if (lastTrackId && lastPlayRowId !== null) {
             const done = duration.value > 0 && position.value / duration.value > 0.9
@@ -448,7 +450,7 @@ export const usePlayerStore = defineStore('player', () => {
       }),
       await listen<string>('track-started', async (event) => {
         const newId = event.payload
-        if (!newId) return
+        if (!newId || isExternalPlayback.value) return
         if (isMainWindow) {
           if (lastTrackId && lastPlayRowId !== null) {
             const done = duration.value > 0 && position.value / duration.value > 0.9
@@ -502,6 +504,14 @@ export const usePlayerStore = defineStore('player', () => {
           await syncQueueFromBackend()
         }),
         await listen('playback-ended', async () => {
+          if (isExternalPlayback.value) {
+            isPlaying.value = false
+            position.value = 0
+            lastSyncPosition = 0
+            lastSyncTime = performance.now()
+            isExternalPlayback.value = false
+            return
+          }
           if (!currentTrack.value) return
           if (lastTrackId && lastPlayRowId !== null) {
             const done = duration.value > 0 && position.value / duration.value > 0.9
@@ -821,6 +831,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   async function playNext() {
+    isExternalPlayback.value = false
     const track = await api.nextTrack().catch(e => {
       console.error('nextTrack failed', e)
       return null
@@ -842,6 +853,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   async function playPrev() {
+    isExternalPlayback.value = false
     const track = await api.prevTrack().catch(e => {
       console.error('prevTrack failed', e)
       return null
@@ -1022,6 +1034,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   async function playTracks(tracks: api.Track[], startIndex: number) {
+    isExternalPlayback.value = false
     if (audioEngineDead.value) {
       console.warn('[audio] Cannot play — engine unavailable')
       return

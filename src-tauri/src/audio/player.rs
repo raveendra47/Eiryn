@@ -345,6 +345,8 @@ impl Player {
                         // Open source file
                         match Source::open(&path) {
                             Ok(src) => {
+                                next_source = None;
+                                next_track_id = None;
                                 source_rate = src.rate;
                                 current_track_id = track_id.unwrap_or_default();
 
@@ -720,23 +722,7 @@ impl Player {
                                 // 1. Channel mapping to match device channels
                                 map_channels(chunk, src_ch, ch, &mut mapped_buf);
 
-                                // 2. DSP processing (only when not in bit-perfect exclusive mode)
-                                if !o.exclusive() {
-                                    let linear_gain = 10f32.powf(current_rg_db / 20.0);
-                                    if (linear_gain - 1.0).abs() > 0.001 {
-                                        for s in &mut mapped_buf {
-                                            *s *= linear_gain;
-                                        }
-                                    }
-                                    if karaoke_flag.load(Ordering::Relaxed) {
-                                        karaoke.process(&mut mapped_buf, ch);
-                                    }
-                                    eq.process(&mut mapped_buf);
-                                    crossfeed.process(&mut mapped_buf, ch);
-                                    limiter.process(&mut mapped_buf);
-                                }
-
-                                // 3. Resampling to device rate
+                                // 2. Resampling to device rate (shared mode only; bit-perfect exclusive mode passes native rate)
                                 let before = pending.len();
                                 if source_rate != out_rate && !o.exclusive() {
                                     let fresh = !resampler
@@ -763,6 +749,25 @@ impl Player {
                                     pending.extend_from_slice(&mapped_buf);
                                 }
 
+                                // 3. DSP processing at device output rate (o.rate) on the newly added frames
+                                // Running DSP after resampling ensures filters operate at their design rate (o.rate)
+                                // and the peak limiter prevents any resampling overshoot from hard-clipping at output.
+                                if !o.exclusive() && pending.len() > before {
+                                    let new_samples = &mut pending[before..];
+                                    let linear_gain = 10f32.powf(current_rg_db / 20.0);
+                                    if (linear_gain - 1.0).abs() > 0.001 {
+                                        for s in new_samples.iter_mut() {
+                                            *s *= linear_gain;
+                                        }
+                                    }
+                                    if karaoke_flag.load(Ordering::Relaxed) {
+                                        karaoke.process(new_samples, ch);
+                                    }
+                                    eq.process(new_samples);
+                                    crossfeed.process(new_samples, ch);
+                                    limiter.process(new_samples);
+                                }
+
                                 let added_frames = (pending.len() - before) / ch;
                                 written += added_frames as u64;
 
@@ -779,6 +784,10 @@ impl Player {
                                 if let Some(ref mut r) = resampler {
                                     let before = pending.len();
                                     let _ = r.flush(&mut pending);
+                                    if !o.exclusive() && pending.len() > before {
+                                        let new_samples = &mut pending[before..];
+                                        limiter.process(new_samples);
+                                    }
                                     written += ((pending.len() - before) / ch) as u64;
                                 }
 

@@ -419,6 +419,7 @@ export const dismissCrashReport = () => invoke<void>('dismiss_crash_report')
 export const consumePendingExternalFile = () => invoke<Record<string, unknown> | null>('consume_pending_external_file')
 export const playExternalFile = (filePath: string, durationSecs?: number) =>
   invoke<Record<string, unknown>>('play_external_file', { filePath, durationSecs: durationSecs ?? null })
+export const isExternalPlayback = () => invoke<boolean>('is_external_playback')
 
 // --- Smart Mix ---
 export const generateSmartMix = (seedTrackId: string, count: number) =>

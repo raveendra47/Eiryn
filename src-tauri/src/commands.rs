@@ -343,6 +343,8 @@ pub async fn play_track(
     // Determine ReplayGain: prefer metadata, fall back to computed LUFS gain
     let rg_gain = get_playback_gain(&state, &track, &id).await;
 
+    state.is_external_playback.store(false, std::sync::atomic::Ordering::Release);
+    state.player.clear_next();
     state.player.play_track(std::path::PathBuf::from(&play_path), app_handle.clone(), rg_gain, track.sample_rate, Some(id.clone()))?;
 
     // If this is a CUE virtual track, seek to the track offset
@@ -365,29 +367,88 @@ pub async fn play_track(
     Ok(())
 }
 
+pub fn track_from_ref(r: &crate::queue::TrackRef, sample_rate: u32) -> Track {
+    Track {
+        id: r.id.clone(),
+        file_path: r.file_path.clone(),
+        title: r.title.clone(),
+        artist: r.artist.clone(),
+        album: r.album.clone(),
+        album_artist: r.artist.clone(),
+        album_id: String::new(),
+        composer: String::new(),
+        track_number: 0,
+        disc_number: 0,
+        year: 0,
+        genre: String::new(),
+        raw_genre_names: String::new(),
+        duration: r.duration,
+        sample_rate,
+        bit_depth: 0,
+        channels: 2,
+        bitrate: 0,
+        file_size: 0,
+        file_format: String::new(),
+        has_artwork: false,
+        replaygain_track_gain: 0.0,
+        replaygain_album_gain: 0.0,
+        cue_parent_id: r.cue_parent_id.clone(),
+        cue_offset: r.cue_offset,
+        artwork_key: None,
+        bpm: r.bpm,
+        musical_key: String::new(),
+        energy: 0.0,
+        analysis_failed_reason: None,
+        file_modified: 0,
+        matched_lyric: None,
+    }
+}
+
 pub fn update_smtc_track(state: &AppState, track: &Track) {
+    if let Ok(mut at) = state.active_track.lock() {
+        *at = Some(track.clone());
+    }
+    if let Ok(mut tid) = state.current_track_id.lock() {
+        *tid = Some(track.id.clone());
+    }
+
+    let mut title = track.title.trim().to_string();
+    if title.is_empty() {
+        if let Some(stem) = std::path::Path::new(&track.file_path).file_stem().and_then(|s| s.to_str()) {
+            title = stem.to_string();
+        } else {
+            title = "Unknown Track".to_string();
+        }
+    }
+    let artist = if track.artist.trim().is_empty() {
+        "Unknown Artist".to_string()
+    } else {
+        track.artist.clone()
+    };
+    let album = if track.album.trim().is_empty() {
+        "Unknown Album".to_string()
+    } else {
+        track.album.clone()
+    };
+
+    // Update tray tooltip & label immediately
+    let tooltip_text = format!("{title} — {artist}");
+    if let Ok(tray_guard) = state.tray_menu.lock() {
+        if let Some(ref tm) = *tray_guard {
+            tm.set_tooltip(Some(&tooltip_text));
+            tm.set_track_info(&title, &artist);
+            tm.set_playing(true);
+        }
+    }
+
     if let Ok(guard) = state.media.lock() {
         if let Some(ref tx) = *guard {
-            let cover = if let Some(ref key) = track.artwork_key {
-                let path = state.track_artwork_cache.path_for_key(key, Some("md"));
-                let final_path = if path.exists() {
-                    path
-                } else {
-                    state.track_artwork_cache.path_for_key(key, None)
-                };
-                if final_path.exists() {
-                    Some(format!("file:///{}", final_path.to_string_lossy().replace('\\', "/")))
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
+            let cover = crate::hub::resolve_artwork_file_url(state, track);
 
             let _ = tx.send(crate::media::Update::Track(Some(crate::media::NowPlaying {
-                title: track.title.clone(),
-                artist: track.artist.clone(),
-                album: track.album.clone(),
+                title,
+                artist,
+                album,
                 cover,
                 duration: track.duration,
             })));
@@ -751,18 +812,26 @@ async fn play_track_ref(state: &AppState, app_handle: &tauri::AppHandle, track: 
         return Err(format!("File not found: {}", play_path.display()));
     }
 
+    state.is_external_playback.store(false, std::sync::atomic::Ordering::Release);
+    state.player.clear_next();
     state.player.play_track(play_path, app_handle.clone(), rg_gain, play_rate, Some(track.id.clone()))?;
 
     if track.cue_offset > 0.0 {
         state.player.seek(track.cue_offset as f32);
     }
 
+    if let Ok(mut tid) = state.current_track_id.lock() {
+        *tid = Some(track.id.clone());
+    }
+
     let _ = app_handle.emit("track-started", &track.id);
     let _ = app_handle.emit("player:status", serde_json::json!({"playing": true, "track_id": track.id}));
 
-    if let Ok(Some(full_track)) = db::get_track(&state.db, &track.id).await {
-        update_smtc_track(state, &full_track);
-    }
+    let full_track = match db::get_track(&state.db, &track.id).await {
+        Ok(Some(t)) => t,
+        _ => track_from_ref(track, play_rate),
+    };
+    update_smtc_track(state, &full_track);
 
     // Gapless: pre-decode the next track if enabled
     prime_next_track(state, app_handle).await;
@@ -772,6 +841,9 @@ async fn play_track_ref(state: &AppState, app_handle: &tauri::AppHandle, track: 
 
 async fn prime_next_track(state: &AppState, app_handle: &tauri::AppHandle) {
     if !state.player.is_gapless() {
+        return;
+    }
+    if state.is_external_playback.load(std::sync::atomic::Ordering::Acquire) {
         return;
     }
     let next = state.queue_state.lock().ok().and_then(|q| q.peek_next().cloned());
@@ -843,6 +915,9 @@ pub async fn prepare_next_track(
     app_handle: tauri::AppHandle,
     track_id: String,
 ) -> Result<(), String> {
+    if state.is_external_playback.load(std::sync::atomic::Ordering::Acquire) {
+        return Ok(());
+    }
     let track = db::get_track(&state.db, &track_id)
         .await?
         .ok_or("Track not found")?;
@@ -881,6 +956,11 @@ pub async fn advance_queue(
         }
         let queue_path = app_handle.path().app_data_dir().map_err(|e| e.to_string())?.join("queue_state.json");
         save_queue_state(&state, &queue_path);
+        let full_track = match db::get_track(&state.db, &t.id).await {
+            Ok(Some(ft)) => ft,
+            _ => track_from_ref(t, 0),
+        };
+        update_smtc_track(&state, &full_track);
         Ok(Some(t.clone()))
     } else {
         Ok(None)
@@ -937,6 +1017,14 @@ pub async fn prev_track(
     state: State<'_, AppState>,
     app_handle: tauri::AppHandle,
 ) -> Result<Option<TrackRef>, String> {
+    let cur_pos = state.player.position() as f64;
+    if cur_pos > 3.0 {
+        state.player.seek(0.0);
+        let _ = app_handle.emit("player:seek", 0.0);
+        update_smtc_playback(&state, state.player.is_playing(), 0.0);
+        let q = state.queue_state.lock().map_err(|e| e.to_string())?;
+        return Ok(q.current_track().cloned());
+    }
     let track = {
         let mut q = state.queue_state.lock().map_err(|e| e.to_string())?;
         q.prev_track().cloned()
@@ -3371,58 +3459,118 @@ pub async fn play_external_file(
     }
     // Tags are best-effort: a metadata read failure must never veto audio.
     // Falls back to the caller-supplied duration (e.g. feed value), else 0.
-    let track = Track::from_path(path)
-        .map_err(|e| log::warn!("External file tags unreadable, playing anyway: {e}"))
-        .ok();
-    let (title, artist, album, album_artist, composer, track_number, disc_number, year, genre, raw_genre_names, duration, sample_rate, bit_depth, bitrate, file_size, file_format, has_artwork, rg_track, rg_album) =
-        match track {
-            Some(t) => (
-                t.title, t.artist, t.album, t.album_artist, t.composer,
-                t.track_number, t.disc_number, t.year, t.genre, t.raw_genre_names,
-                t.duration, t.sample_rate, t.bit_depth, t.bitrate, t.file_size,
-                t.file_format, t.has_artwork,
-                t.replaygain_track_gain, t.replaygain_album_gain,
-            ),
-            None => (
-                String::new(), String::new(), String::new(), String::new(), String::new(),
-                0, 0, 0, String::new(), String::new(),
-                duration_secs.unwrap_or(0.0), 0, 0, 0, 0,
-                String::new(), false, 0.0, 0.0,
-            ),
-        };
+    let mut full_track = match Track::from_path(path) {
+        Ok(t) => t,
+        Err(e) => {
+            log::warn!("External file tags unreadable, playing anyway: {e}");
+            let file_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+            let file_format = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+            Track {
+                id: uuid::Uuid::new_v4().to_string(),
+                file_path: file_path.clone(),
+                title: String::new(),
+                artist: String::new(),
+                album: String::new(),
+                album_artist: String::new(),
+                album_id: String::new(),
+                composer: String::new(),
+                track_number: 0,
+                disc_number: 0,
+                year: 0,
+                genre: String::new(),
+                raw_genre_names: String::new(),
+                duration: duration_secs.unwrap_or(0.0),
+                sample_rate: 0,
+                bit_depth: 0,
+                channels: 2,
+                bitrate: 0,
+                file_size,
+                file_format,
+                has_artwork: false,
+                replaygain_track_gain: 0.0,
+                replaygain_album_gain: 0.0,
+                cue_parent_id: None,
+                cue_offset: 0.0,
+                artwork_key: None,
+                bpm: 0.0,
+                musical_key: String::new(),
+                energy: 0.0,
+                analysis_failed_reason: None,
+                file_modified: 0,
+                matched_lyric: None,
+            }
+        }
+    };
+
+    if full_track.title.trim().is_empty() {
+        if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+            full_track.title = stem.to_string();
+        }
+    }
+    if full_track.artist.trim().is_empty() {
+        full_track.artist = "Unknown Artist".to_string();
+    }
+    if full_track.duration <= 0.0 {
+        if let Some(d) = duration_secs {
+            full_track.duration = d;
+        }
+    }
+
     let gain = 0.0;
-    let track_id = uuid::Uuid::new_v4().to_string();
-    state.player.play_track(path.to_path_buf(), app_handle.clone(), gain, sample_rate, Some(track_id.clone()))
+    let track_id = full_track.id.clone();
+    state.is_external_playback.store(true, std::sync::atomic::Ordering::Release);
+    state.player.clear_next();
+    state.player.play_track(path.to_path_buf(), app_handle.clone(), gain, full_track.sample_rate, Some(track_id.clone()))
         .map_err(|e| format!("Failed to play: {e}"))?;
+
+    // Store active track and current track id for cross-window and SMTC sync
+    if let Ok(mut tid) = state.current_track_id.lock() {
+        *tid = Some(track_id.clone());
+    }
+    if let Ok(mut at) = state.active_track.lock() {
+        *at = Some(full_track.clone());
+    }
+
+    // Immediately push full metadata and album artwork to Windows SMTC & Tray
+    update_smtc_track(&state, &full_track);
+
     let _ = app_handle.emit("track-started", &track_id);
+    let _ = app_handle.emit("player:status", serde_json::json!({"playing": true, "track_id": track_id}));
+
     let payload = serde_json::json!({
         "id": track_id,
         "file_path": file_path,
-        "title": title,
-        "artist": artist,
-        "album": album,
-        "album_artist": album_artist,
-        "composer": composer,
-        "track_number": track_number,
-        "disc_number": disc_number,
-        "year": year,
-        "genre": genre,
-        "raw_genre_names": raw_genre_names,
-        "duration": duration,
-        "sample_rate": sample_rate,
-        "bit_depth": bit_depth,
-        "bitrate": bitrate,
-        "file_size": file_size,
-        "file_format": file_format,
-        "has_artwork": has_artwork,
-        "replaygain_track_gain": rg_track,
-        "replaygain_album_gain": rg_album,
+        "title": full_track.title,
+        "artist": full_track.artist,
+        "album": full_track.album,
+        "album_artist": full_track.album_artist,
+        "composer": full_track.composer,
+        "track_number": full_track.track_number,
+        "disc_number": full_track.disc_number,
+        "year": full_track.year,
+        "genre": full_track.genre,
+        "raw_genre_names": full_track.raw_genre_names,
+        "duration": full_track.duration,
+        "sample_rate": full_track.sample_rate,
+        "bit_depth": full_track.bit_depth,
+        "bitrate": full_track.bitrate,
+        "file_size": full_track.file_size,
+        "file_format": full_track.file_format,
+        "has_artwork": full_track.has_artwork,
+        "replaygain_track_gain": full_track.replaygain_track_gain,
+        "replaygain_album_gain": full_track.replaygain_album_gain,
     });
     // Also store in pending so FilePlayerView can consume it
     if let Ok(mut pending) = state.pending_external_file.lock() {
         *pending = Some(payload.clone());
     }
+    let _ = app_handle.emit("external-playback-started", &payload);
     Ok(payload)
+}
+
+#[tauri::command]
+pub fn is_external_playback(state: State<'_, AppState>) -> bool {
+    state.is_external_playback.load(std::sync::atomic::Ordering::Acquire)
 }
 
 #[tauri::command]

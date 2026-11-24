@@ -198,19 +198,22 @@ onMounted(async () => {
     const unlistenExternal = await listen<Record<string, unknown>>('external-file-received', async (event) => {
       const data = event.payload
       if (data && typeof data.file_path === 'string') {
-        const newTitle = (data.title as string) || 'Unknown'
-        const ok = playerStore.isPlaying && playerStore.currentTrack
-          ? confirm(`Stop "${playerStore.currentTrack.title}" and play "${newTitle}"?`)
-          : true
-        if (ok) {
-          if (playerStore.isPlaying) {
-            await api.stopPlayback()
-          }
-          const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+        // Pause main window playback if currently playing
+        if (playerStore.isPlaying) {
+          await playerStore.pause()
+        }
+
+        const { getAllWebviewWindows, WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+        const allWins = await getAllWebviewWindows()
+        const existingFilePlayer = allWins.find(w => w.label.startsWith('file-player'))
+        if (existingFilePlayer) {
+          await existingFilePlayer.show()
+          await existingFilePlayer.setFocus()
+        } else {
           const win = new WebviewWindow(`file-player-${Date.now()}`, {
             url: '/#/file-player',
-            width: 420,
-            height: 640,
+            width: 480,
+            height: 480,
             resizable: false,
             decorations: false,
             center: true,

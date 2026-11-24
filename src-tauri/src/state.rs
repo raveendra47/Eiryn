@@ -34,6 +34,7 @@ pub struct AppState {
     pub is_fetching: Arc<AtomicBool>,
     pub is_fetching_genre: Arc<AtomicBool>,
     pub current_track_id: Arc<Mutex<Option<String>>>,
+    pub active_track: Arc<Mutex<Option<crate::library::track::Track>>>,
     pub cache_root: Arc<Mutex<PathBuf>>,
     pub lufs_cache: Option<Arc<Mutex<LufsCache>>>,
     #[cfg(windows)]
@@ -42,4 +43,6 @@ pub struct AppState {
     pub was_crash: std::sync::atomic::AtomicBool,
     pub pending_external_file: Arc<Mutex<Option<serde_json::Value>>>,
     pub file_player_counter: AtomicU32,
+    pub is_external_playback: Arc<AtomicBool>,
+    pub is_standalone_file_player: Arc<AtomicBool>,
 }

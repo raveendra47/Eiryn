@@ -132,12 +132,44 @@ fn run(
         let result = match update {
             Update::Track(Some(np)) => {
                 current_duration = np.duration;
-                controls.set_metadata(MediaMetadata {
-                    title: Some(&np.title),
-                    artist: Some(&np.artist),
-                    album: Some(&np.album),
-                    cover_url: np.cover.as_deref(),
+                let title = if np.title.trim().is_empty() { "Unknown Track" } else { np.title.trim() };
+                let artist = if np.artist.trim().is_empty() { "Unknown Artist" } else { np.artist.trim() };
+                let album = (!np.album.trim().is_empty()).then_some(np.album.trim());
+
+                // Format cover_url to file://D:\... for Windows WinRT StorageFile compatibility
+                let cover_clean = np.cover.as_ref().map(|url| {
+                    if url.starts_with("file://") {
+                        let stripped = url.trim_start_matches("file://");
+                        let path = stripped.trim_start_matches('/').trim_start_matches('\\').replace('/', "\\");
+                        format!("file://{path}")
+                    } else {
+                        url.clone()
+                    }
+                });
+
+                let set_res = controls.set_metadata(MediaMetadata {
+                    title: Some(title),
+                    artist: Some(artist),
+                    album,
+                    cover_url: cover_clean.as_deref(),
                     duration: (np.duration > 0.0).then(|| Duration::from_secs_f64(np.duration)),
+                });
+
+                if let Err(e) = set_res {
+                    log::warn!("Failed to set SMTC metadata with cover ({e:?}); retrying without cover...");
+                    if let Err(e2) = controls.set_metadata(MediaMetadata {
+                        title: Some(title),
+                        artist: Some(artist),
+                        album,
+                        cover_url: None,
+                        duration: (np.duration > 0.0).then(|| Duration::from_secs_f64(np.duration)),
+                    }) {
+                        log::warn!("Failed to set fallback SMTC metadata: {e2:?}");
+                    }
+                }
+
+                controls.set_playback(MediaPlayback::Playing {
+                    progress: Some(MediaPosition(Duration::from_secs_f64(0.0))),
                 })
             }
             Update::Track(None) => controls.set_playback(MediaPlayback::Stopped),

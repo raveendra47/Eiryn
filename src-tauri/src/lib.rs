@@ -4,6 +4,7 @@ pub mod crash;
 pub mod media;
 pub mod session;
 pub mod gpu;
+pub mod hub;
 pub mod lastfm;
 pub mod library;
 pub mod power;

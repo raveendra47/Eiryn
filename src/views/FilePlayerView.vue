@@ -176,8 +176,38 @@ onMounted(async () => {
     }
   }
 
+  // Sync initial volume from backend player
+  try {
+    const ps = await api.getPlayerState()
+    if (ps && typeof ps.volume === 'number') {
+      store.rawVolume = ps.volume
+      store.volume = ps.volume
+    }
+  } catch { }
+
   // Listen for backend events
   _unlisteners = [
+    await listen<Record<string, unknown>>('external-file-received', async (event) => {
+      const data = event.payload
+      if (data && typeof data.file_path === 'string') {
+        localError.value = null
+        trackMeta.value = data
+        localDuration.value = (data.duration as number) || 0
+        loadArtwork(data.file_path as string)
+        try {
+          const result = await api.playExternalFile(data.file_path as string)
+          if (result) {
+            trackMeta.value = { ...data, ...result }
+            localDuration.value = (result.duration as number) || 0
+            loadArtwork(result.file_path as string)
+          }
+          localIsPlaying.value = true
+        } catch (e) {
+          localError.value = String(e)
+          console.error('[filePlayer] Failed to play external file:', e)
+        }
+      }
+    }),
     await listen('track-started', async () => {
       localIsPlaying.value = true
       try {
@@ -256,8 +286,8 @@ onUnmounted(() => {
       </div>
 
       <!-- Artwork area -->
-      <div class="flex-1 flex items-center justify-center px-6 py-4">
-        <div class="relative w-full max-w-[280px] aspect-square rounded-2xl overflow-hidden shadow-2xl">
+      <div class="flex-1 min-h-0 flex items-center justify-center px-6 py-2">
+        <div class="relative h-full max-h-[220px] aspect-square rounded-2xl overflow-hidden shadow-2xl">
           <LazyImg
             v-if="artworkObjectUrl"
             :src="artworkObjectUrl"

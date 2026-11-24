@@ -151,15 +151,13 @@ fn main() {
                             if let Ok(mut pending) = state.pending_external_file.lock() {
                                 *pending = Some(payload.clone());
                             }
-                            if let Some(main_win) = app.get_webview_window("main") {
-                                let _ = main_win.show();
-                                let _ = main_win.set_focus();
-                            }
                             let _ = app.emit("external-file-received", payload);
+                            return;
                         }
                     }
                 }
             }
+            eiryn_lib::tray::show_main(app);
         }))
         .setup(|app| {
             let t_setup = std::time::Instant::now();
@@ -243,6 +241,25 @@ fn main() {
 
             let tray_menu_holder: Arc<std::sync::Mutex<Option<TrayMenu>>> = Arc::new(std::sync::Mutex::new(None));
 
+            let args: Vec<String> = std::env::args().collect();
+            let is_external_file = if args.len() > 1 {
+                let file_path = &args[1];
+                let path = std::path::Path::new(file_path);
+                if path.exists() {
+                    let ext = path.extension()
+                        .and_then(|e| e.to_str())
+                        .unwrap_or("")
+                        .to_lowercase();
+                    let audio_exts = ["mp3","flac","wav","m4a","ogg","wma","aac",
+                                      "opus","wv","aiff","dsf","dff","ape","mpc","tta","mid"];
+                    audio_exts.contains(&ext.as_str())
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
+
             let state = AppState {
                 player: Arc::new(player),
                 db: pool.clone(),
@@ -263,6 +280,7 @@ fn main() {
                 is_fetching: Arc::new(std::sync::atomic::AtomicBool::new(false)),
                 is_fetching_genre: Arc::new(std::sync::atomic::AtomicBool::new(false)),
                 current_track_id: Arc::new(std::sync::Mutex::new(None)),
+                active_track: Arc::new(std::sync::Mutex::new(None)),
                 lufs_cache: Some(lufs_cache),
                 #[cfg(windows)]
                 gpu_engine,
@@ -270,6 +288,8 @@ fn main() {
                 was_crash: crash_flag,
                 pending_external_file: Arc::new(std::sync::Mutex::new(None)),
                 file_player_counter: std::sync::atomic::AtomicU32::new(0),
+                is_external_playback: Arc::new(std::sync::atomic::AtomicBool::new(is_external_file)),
+                is_standalone_file_player: Arc::new(std::sync::atomic::AtomicBool::new(is_external_file)),
             };
             app.manage(state);
 
@@ -277,24 +297,6 @@ fn main() {
             // with the remaining setup below (EQ/tray/watchers). All commands
             // work from here because state is already managed.
             // Create windows programmatically (none in tauri.conf.json)
-            let args: Vec<String> = std::env::args().collect();
-            let is_external_file = if args.len() > 1 {
-                let file_path = &args[1];
-                let path = std::path::Path::new(file_path);
-                if path.exists() {
-                    let ext = path.extension()
-                        .and_then(|e| e.to_str())
-                        .unwrap_or("")
-                        .to_lowercase();
-                    let audio_exts = ["mp3","flac","wav","m4a","ogg","wma","aac",
-                                      "opus","wv","aiff","dsf","dff","ape","mpc","tta","mid"];
-                    audio_exts.contains(&ext.as_str())
-                } else {
-                    false
-                }
-            } else {
-                false
-            };
 
             if is_external_file {
                 let file_path = &args[1];
@@ -344,12 +346,17 @@ fn main() {
                     *pending = Some(payload);
                 }
 
-                // Create file-player window (playback deferred to FilePlayerView)
+                // Hide the main library window so ONLY the square File Player window is shown
+                if let Some(main_win) = app.get_webview_window("main") {
+                    let _ = main_win.hide();
+                }
+
+                // Create square file-player window (playback deferred to FilePlayerView)
                 let counter = state.file_player_counter.fetch_add(1, Ordering::Relaxed);
                 let label = format!("file-player-{counter}");
                 let mut builder = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html#/file-player".into()))
                     .title("Eiryn")
-                    .inner_size(420.0, 640.0)
+                    .inner_size(480.0, 480.0)
                     .resizable(false)
                     .decorations(false)
                     .center();
@@ -360,7 +367,11 @@ fn main() {
 
                 #[cfg(windows)]
                 {
-                    let hwnd = _win.hwnd().map(|h| h.0 as isize).unwrap_or(0);
+                    let hwnd = app.get_webview_window("main")
+                        .and_then(|w| w.hwnd().ok())
+                        .or_else(|| _win.hwnd().ok())
+                        .map(|h| h.0 as isize)
+                        .unwrap_or(0);
                     if hwnd != 0 {
                         let tx = eiryn_lib::media::start(hwnd, app.handle().clone());
                         if let Ok(mut guard) = app.state::<AppState>().media.lock() {
@@ -371,10 +382,16 @@ fn main() {
             } else {
                 // Normal launch - main window created from tauri.conf.json with native decorations
                 let _win = app.get_webview_window("main").expect("main window");
+                let _ = _win.show();
+                let _ = _win.set_focus();
 
                 #[cfg(windows)]
                 {
-                    let hwnd = _win.hwnd().map(|h| h.0 as isize).unwrap_or(0);
+                    let hwnd = app.get_webview_window("main")
+                        .and_then(|w| w.hwnd().ok())
+                        .or_else(|| _win.hwnd().ok())
+                        .map(|h| h.0 as isize)
+                        .unwrap_or(0);
                     if hwnd != 0 {
                         let tx = eiryn_lib::media::start(hwnd, app.handle().clone());
                         if let Ok(mut guard) = app.state::<AppState>().media.lock() {
@@ -527,10 +544,7 @@ fn main() {
                                 });
                             }
                             "show" => {
-                                if let Some(window) = app_handle.get_webview_window("main") {
-                                    let _ = window.show();
-                                    let _ = window.set_focus();
-                                }
+                                eiryn_lib::tray::show_main(app_handle);
                             }
                             "quit" => {
                                 let state = app_handle.state::<AppState>();
@@ -568,10 +582,7 @@ fn main() {
                             ..
                         } = event
                         {
-                            if let Some(window) = tray.app_handle().get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
+                            eiryn_lib::tray::show_main(tray.app_handle());
                         }
                     });
 
@@ -606,9 +617,32 @@ fn main() {
                             update_tray_from_state(tm, &app_tray3);
                         }
                     });
+
+                    let app_track_chg = app.handle().clone();
+                    app.listen("track-changed", move |event| {
+                        let tid_val: String = serde_json::from_str(event.payload()).unwrap_or_default();
+                        if !tid_val.is_empty() {
+                            let state = app_track_chg.state::<AppState>();
+                            if let Ok(mut cur) = state.current_track_id.lock() {
+                                *cur = Some(tid_val.clone());
+                            }
+                            let db = state.db.clone();
+                            let app_h = app_track_chg.clone();
+                            tauri::async_runtime::spawn(async move {
+                                if let Ok(Some(full_track)) = db::get_track(&db, &tid_val).await {
+                                    let st = app_h.state::<AppState>();
+                                    commands::update_smtc_track(&st, &full_track);
+                                }
+                            });
+                        }
+                    });
                 }
             }
             stage!("tray menu");
+
+            // Start background status hub (SMTC / Windows 11 Action Center media widget & tray sync)
+            eiryn_lib::hub::start_status_hub(app.handle().clone());
+            stage!("status hub");
 
             // Start background artist artwork worker
             let worker_state = app.state::<AppState>();
@@ -825,6 +859,7 @@ fn main() {
             commands::dismiss_crash_report,
             commands::consume_pending_external_file,
             commands::play_external_file,
+            commands::is_external_playback,
             commands::generate_smart_mix,
             commands::analyze_audio,
             commands::batch_fetch_artist_artwork,
@@ -876,6 +911,23 @@ fn main() {
             #[cfg(debug_assertions)]
             commands::toggle_devtools,
         ])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                } else if window.label().starts_with("file-player") {
+                    let state = window.app_handle().state::<AppState>();
+                    state.player.stop();
+                    state.is_external_playback.store(false, Ordering::Release);
+                    if state.is_standalone_file_player.load(Ordering::Acquire) {
+                        log::info!("Standalone file player closed; exiting application (Option A)");
+                        eiryn_lib::session::save_clean_exit(&window.app_handle());
+                        window.app_handle().exit(0);
+                    }
+                }
+            }
+        })
         .run(tauri::generate_context!())
         .expect("Failed to run application");
 }

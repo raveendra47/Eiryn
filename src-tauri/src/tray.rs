@@ -1,5 +1,5 @@
 use tauri::{
-    AppHandle, Wry,
+    AppHandle, Manager, Wry,
     menu::{CheckMenuItem, CheckMenuItemBuilder, Menu, MenuItem, MenuItemBuilder, PredefinedMenuItem},
     tray::{TrayIcon, TrayIconBuilder},
 };
@@ -124,5 +124,23 @@ impl TrayMenu {
 
     pub fn set_prev_enabled(&self, enabled: bool) {
         let _ = self.prev_item.set_enabled(enabled);
+    }
+
+    pub fn set_tooltip(&self, text: Option<&str>) {
+        let tt = text
+            .map(|t| format!("Eiryn: {t}"))
+            .unwrap_or_else(|| "Eiryn".into());
+        let truncated: String = tt.chars().take(120).collect();
+        let _ = self.tray.set_tooltip(Some(truncated));
+    }
+}
+
+pub fn show_main<R: tauri::Runtime>(app: &AppHandle<R>) {
+    let state = app.state::<crate::state::AppState>();
+    state.is_standalone_file_player.store(false, std::sync::atomic::Ordering::Release);
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
     }
 }

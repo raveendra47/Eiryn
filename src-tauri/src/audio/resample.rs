@@ -4,7 +4,7 @@
 use anyhow::Result;
 use rubato::{Fft, FixedSync, Resampler as _, WindowFunction};
 
-const BLOCK: usize = 8192;
+const BLOCK: usize = 1024;
 
 fn gcd(mut a: usize, mut b: usize) -> usize {
     while b != 0 {
@@ -101,13 +101,13 @@ impl Resampler {
 
     fn run(&mut self, frames: usize, out: &mut Vec<f32>) -> Result<()> {
         use audioadapter_buffers::direct::InterleavedSlice;
-        let mut buf = vec![0.0f32; frames * self.channels];
-        let take = frames * self.channels;
-        let copy_len = self.pending.len().min(take);
+        let need = self.inner.input_frames_next().max(frames);
+        let mut buf = vec![0.0f32; need * self.channels];
+        let copy_len = self.pending.len().min(buf.len());
         buf[..copy_len].copy_from_slice(&self.pending[..copy_len]);
         self.pending.drain(..copy_len);
 
-        let in_adapter = InterleavedSlice::new(&buf, self.channels, frames)?;
+        let in_adapter = InterleavedSlice::new(&buf, self.channels, need)?;
         let max_out = self.inner.output_frames_max();
         self.out.resize(max_out * self.channels, 0.0);
         let mut out_adapter = InterleavedSlice::new_mut(&mut self.out, self.channels, max_out)?;
