@@ -459,12 +459,12 @@ fn main() {
                 });
             }
 
-            // Build tray menu
+            // Build tray menu (only for main library app; standalone file player does not use tray)
             let show_tray = tauri::async_runtime::block_on(
                 db::get_setting(&pool, "show_tray_icon")
             ).ok().flatten().map(|v| v == "true").unwrap_or(true);
 
-            if show_tray {
+            if show_tray && !is_external_file {
                 if let Ok(tray_menu) = TrayMenu::new(app.handle()) {
                     let tray_icon = tray_menu.tray.clone();
 
